@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Longan Map — Northern Thailand</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    #map {
+      height: 72vh;
+      min-height: 470px;
+      border-radius: 12px;
+      border: 3px solid #a7f3d0;
+      box-shadow: 0px 4px 16px rgba(0,0,0,0.2);
+    }
+    .leaflet-popup-content {
+      font-size: 0.9rem;
+      font-family: 'Inter', sans-serif;
+    }
+  </style>
+</head>
+
+<body class="bg-gray-100 p-4">
+  <div class="max-w-7xl mx-auto">
+
+    <!-- HEADER -->
+    <header class="flex items-start justify-between mb-4">
+      <div>
+        <h1 class="text-2xl font-bold text-green-700">
+          แผนที่ลำไยภาคเหนือ (Longan Map)
+        </h1>
+        <p class="text-sm text-gray-600">
+          Leaflet + OpenStreetMap + Nominatim + LocalStorage
+        </p>
+      </div>
+
+      <div class="text-right">
+        <div class="font-bold">ชื่อ: นางสาวอาณดา แก้วประพันธ์</div>
+        <div class="text-sm text-gray-600">รหัส: 6604101401</div>
+      </div>
+    </header>
+
+    <!-- GRID -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+      <!-- MAP -->
+      <div class="lg:col-span-2 bg-white p-3 rounded-lg shadow">
+        <div id="map"></div>
+
+        <div class="mt-2 flex gap-3">
+          <button id="zoomAll" class="px-3 py-1 bg-blue-500 rounded text-white">โฟกัสทุกจุด</button>
+          <button id="clearMarkers" class="px-3 py-1 bg-red-600 rounded text-white">ลบทุกจุด</button>
+          <div id="status" class="ml-auto text-sm text-gray-600 italic"></div>
+        </div>
+      </div>
+
+      <!-- SIDEBAR -->
+      <aside class="bg-white p-5 rounded-lg shadow">
+
+  <h2 class="text-xl font-semibold mb-4 text-green-700">เพิ่ม/จัดการจุดบนแผนที่</h2>
+
+  <form id="addForm" class="space-y-3">
+
+    <!-- จังหวัด & สถานที่ -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div>
+        <label class="text-sm font-medium">จังหวัด (Province)</label>
+        <input id="province" class="w-full border rounded-lg p-2" placeholder="เช่น เชียงใหม่">
+      </div>
+
+      <div>
+        <label class="text-sm font-medium">สถานที่ (Place)</label>
+        <input id="place" class="w-full border rounded-lg p-2" placeholder="เช่น ตลาดสันทราย">
+      </div>
+    </div>
+
+    <!-- ราคา & วันที่ -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div>
+        <label class="text-sm font-medium">ราคา (บาท/กก.) [Price]</label>
+        <input id="price" class="w-full border rounded-lg p-2" placeholder="เช่น 35.50">
+      </div>
+
+      <div>
+        <label class="text-sm font-medium">วันที่สำรวจ (Date)</label>
+        <input id="date" type="date" class="w-full border rounded-lg p-2">
+      </div>
+    </div>
+
+    <!-- Lat / Lng -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div>
+        <label class="text-sm font-medium">Latitude (ค่าละติจูด)</label>
+        <input id="lat" class="w-full border rounded-lg p-2" placeholder="เช่น 18.7883">
+      </div>
+
+      <div>
+        <label class="text-sm font-medium">Longitude (ค่าลองจิจูด)</label>
+        <input id="lng" class="w-full border rounded-lg p-2" placeholder="เช่น 98.9853">
+      </div>
+    </div>
+
+    <!-- Checkbox -->
+    <div class="text-sm text-gray-700">
+  * ถ้าไม่มี Latitude/Longitude ระบบจะใช้ Geocoding จาก Province + Place (Nominatim)
+</div>
+
+
+    <!-- ปุ่ม -->
+    <div class="flex flex-col gap-3 mt-4">
+      <button class="px-4 py-2 bg-green-600 text-white rounded-lg shadow hover:bg-green-700">
+        เพิ่มจุด (Add Marker)
+      </button>
+
+      <button id="zoomAll"
+        class="px-4 py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600">
+        โฟกัสทุกจุด (Fit all markers)
+      </button>
+
+      <button id="clearMarkers"
+        class="px-4 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600">
+        ล้างแคช Geocoding
+      </button>
+    </div>
+  </form>
+
+  <!-- ตัวอย่างการใช้งาน -->
+  <div class="mt-6 p-3 bg-gray-100 border rounded-lg text-sm">
+    <b class="text-green-700">ตัวอย่างการใช้งาน Nominatim:</b><br>
+    • เลือกจังหวัด: “เชียงใหม่” → ระบบหาพิกัด 18.7883, 98.9853<br>
+    • กรอก “ตลาดสันทราย”, “เชียงใหม่” → Lat=18.8056, Lng=99.0105
+  </div>
+
+  <!-- รายการจุดที่เพิ่ม -->
+  <div id="markerList" class="mt-5 space-y-2 text-sm">
+    <h3 class="font-semibold text-green-700">รายการจุดที่เพิ่ม</h3>
+  </div>
+
+</aside>
+
+    </section>
+  </div>
+
+<script>
+/* -----------------------------------
+   CONFIG
+----------------------------------- */
+const initialCenter = [19.0, 100.0];  // Northern Thailand
+const initialZoom = 8;
+
+const MAP_STORAGE = "longan_markers_v1";
+const GEO_CACHE = "longan_geocode_cache_v1";
+
+/* -----------------------------------
+   MAP
+----------------------------------- */
+const map = L.map("map").setView(initialCenter, initialZoom);
+
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+  attribution: "&copy; OpenStreetMap"
+}).addTo(map);
+
+/* Green Pin SVG */
+const greenPin = encodeURIComponent(`
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 40'>
+  <path fill='#16a34a' stroke='white' stroke-width='1'
+        d='M12 0C7 0 3.5 3.7 3.5 8.3c0 6.9 8.5 16.7 8.5 16.7S20.5 15.2 20.5 8.3C20.5 3.7 17 0 12 0z'/>
+  <circle cx='12' cy='8.3' r='3.3' fill='white'/>
+</svg>
+`);
+const iconGreen = L.icon({
+  iconUrl: "data:image/svg+xml;utf8," + greenPin,
+  iconSize: [30, 42],
+  iconAnchor: [15, 42],
+  popupAnchor: [0, -45]   // ★ ตรงนี้คือสิ่งที่ทำให้ popup ลอยขึ้นหลังหมุด
+});
+
+/* Layers */
+let markersLayer = L.featureGroup().addTo(map);
+
+/* -----------------------------------
+   STORAGE
+----------------------------------- */
+function load(key, def) {
+  try { return JSON.parse(localStorage.getItem(key)) || def; }
+  catch { return def; }
+}
+function save(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+
+let markerData = load(MAP_STORAGE, []);
+let geocodeCache = load(GEO_CACHE, {});
+
+/* -----------------------------------
+   GEOCODE (Nominatim)
+----------------------------------- */
+async function geocode(query) {
+  query = query.trim();
+  if (!query) return null;
+
+  if (geocodeCache[query]) return geocodeCache[query];
+
+  let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
+
+  try {
+    let r = await fetch(url);
+    let j = await r.json();
+    if (j.length > 0) {
+      let lat = parseFloat(j[0].lat);
+      let lng = parseFloat(j[0].lon);
+      geocodeCache[query] = { lat, lng };
+      save(GEO_CACHE, geocodeCache);
+      return { lat, lng };
+    }
+  } catch (e) {}
+
+  return null;
+}
+
+/* -----------------------------------
+   ADD MARKER
+----------------------------------- */
+function popupHTML(d) {
+  return `
+    <div style="font-size: 0.95rem;">
+      <b>${d.place} - ${d.province}</b><br>
+      ราคา: <b>${d.price}</b> บาท/กก.<br>
+      วันที่สำรวจ: ${d.date}<br>
+      โดย: นางสาวอาณดา แก้วประพันธ์ (6604101401)
+    </div>
+  `;
+}
+
+
+function addMarker(d, saveToLocal = true) {
+  let m = L.marker([d.lat, d.lng], { icon: iconGreen }).addTo(markersLayer);
+  m.bindPopup(popupHTML(d));
+  m._id = d.id;
+
+  if (saveToLocal) {
+    markerData.push(d);
+    save(MAP_STORAGE, markerData);
+  }
+
+  fitAll();
+}
+
+function updateMarkerList() {
+  const box = document.getElementById("markerList");
+  box.innerHTML = "<h3 class='font-semibold text-green-700'>รายการจุดที่เพิ่ม</h3>";
+
+  markerData.forEach(m => {
+    const div = document.createElement("div");
+    div.className = "bg-green-50 p-2 border rounded";
+    div.textContent = `${m.place} | ราคา ${m.price} | ${m.date}`;
+    box.appendChild(div);
+  });
+}
+updateMarkerList();
+
+
+/* -----------------------------------
+   FIT BOUNDS
+----------------------------------- */
+function fitAll() {
+  let layers = markersLayer.getLayers();
+  if (layers.length == 0) {
+    map.setView(initialCenter, initialZoom);
+  } else {
+    map.fitBounds(markersLayer.getBounds().pad(0.1));
+  }
+}
+
+/* -----------------------------------
+   CLEAR ALL
+----------------------------------- */
+function clearAll() {
+  if (!confirm("ต้องการลบทุกจุดหรือไม่?")) return;
+  markerData = [];
+  save(MAP_STORAGE, markerData);
+  markersLayer.clearLayers();
+  fitAll();
+}
+
+/* -----------------------------------
+   FORM SUBMIT
+----------------------------------- */
+const form = document.getElementById("addForm");
+const statusEl = document.getElementById("status");
+
+function status(t){ statusEl.textContent = t; }
+
+form.addEventListener("submit", async (e)=> {
+  e.preventDefault();
+  status("กำลังเพิ่ม...");
+
+  let place = document.getElementById("place").value.trim();
+  let province = document.getElementById("province").value.trim();
+  let latIn = document.getElementById("lat").value.trim();
+  let lngIn = document.getElementById("lng").value.trim();
+  let price = document.getElementById("price").value.trim();
+  let date = document.getElementById("date").value;
+  let force = document.getElementById("forceGeocode").checked;
+
+  let latV = parseFloat(latIn);
+  let lngV = parseFloat(lngIn);
+
+  if ((!latIn || !lngIn) || force) {
+    let q = `${place} ${province}`;
+    let r = await geocode(q);
+    if (!r) return alert("ไม่พบพิกัดจาก Geocode");
+    latV = r.lat;
+    lngV = r.lng;
+  }
+
+  let d = {
+    id: "m" + Date.now(),
+    place,
+    province,
+    lat: latV,
+    lng: lngV,
+    price,
+    date
+  };
+
+  addMarker(d, true);
+  status("เพิ่มข้อมูลสำเร็จ");
+  form.reset();
+});
+
+/* -----------------------------------
+   BUTTONS
+----------------------------------- */
+document.getElementById("zoomAll").onclick = fitAll;
+document.getElementById("clearMarkers").onclick = clearAll;
+
+/* -----------------------------------
+   LOAD EXISTING
+----------------------------------- */
+markerData.forEach(d => addMarker(d, false));
+fitAll();
+status("พร้อมใช้งาน");
+</script>
+
+</body>
+</html>
